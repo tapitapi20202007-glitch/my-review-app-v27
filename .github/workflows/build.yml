@@ -1,14 +1,28 @@
 name: Build IPA
-on: [push] # コードをアップロードするたびに自動で動く
+on: [push]
 jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: expo/expo-github-action@v8
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - run: npm install
-      - run: npx expo export
-      # ここでGitHubが自動で実機用のipaを作成し、保存します
+          node-version: 18
+      - name: Install Dependencies
+        run: npm install
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform ios
+      - name: Build Unsigned IPA for SideStore
+        run: |
+          cd ios
+          pod install
+          xcodebuild -workspace *.xcworkspace -scheme "$(ls -A | grep .xcworkspace | sed 's/.xcworkspace//')" -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO build
+          mkdir -p Payload
+          mv build/Release-iphoneos/*.app Payload/
+          zip -r app-release.ipa Payload
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: ios/app-release.ipa
