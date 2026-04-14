@@ -12,7 +12,7 @@ jobs:
       - name: Install Dependencies
         run: npm install
       - name: Expo Prebuild
-        run: npx expo prebuild --platform ios
+        run: npx expo prebuild --platform ios --no-install
       - name: Build Unsigned IPA for SideStore
         run: |
           cd ios
