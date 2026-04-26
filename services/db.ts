@@ -214,4 +214,4 @@ function toQuestion(row: any): Question {
     createdAt: row.created_at,
     wrongCount: row.wrong_count,
   };
-}
+}　
