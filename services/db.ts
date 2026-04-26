@@ -126,6 +126,14 @@ export function deleteMultiple(ids: string[]) {
   db.runSync(`DELETE FROM questions WHERE question_id IN (${placeholders})`, ids);
 }
 
+export function updateQuestion(q: Question) {
+  db.runSync(
+    `UPDATE questions SET main_question = ?, sub_question = ?, answer = ?, explanation = ?
+     WHERE question_id = ?`,
+    [q.mainQuestion, q.subQuestion, q.answer, q.explanation, q.questionId]
+  );
+}
+
 // 不正解時の更新
 export function updateWrongQuestions(ids: string[]) {
   const now = Date.now();
