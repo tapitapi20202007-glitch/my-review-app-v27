@@ -4,10 +4,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
-  Platform, // ★追加: OSを判定するための機能
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,6 +27,20 @@ interface ExtractedQuestion {
   checked: boolean;
 }
 
+function showAlert(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n${message}`);
+  } else {
+    const { Alert } = require('react-native');
+    Alert.alert(title, message);
+  }
+}
+
+function formatQuestionId(questionId: string): string {
+  if (questionId.startsWith('手動-')) return '手動保存';
+  return `問${questionId}`;
+}
+
 export default function UploadScreen() {
   const router = useRouter();
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -35,13 +48,18 @@ export default function UploadScreen() {
   const [questions, setQuestions] = useState<ExtractedQuestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [manualMain, setManualMain] = useState('');
   const [manualSub, setManualSub] = useState('');
   const [manualAnswer, setManualAnswer] = useState('');
   const [manualExp, setManualExp] = useState('');
 
-  // ★追加: スマホとWebで画像の読み込み方を分ける魔法の関数
+  const [editMain, setEditMain] = useState('');
+  const [editSub, setEditSub] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
+  const [editExp, setEditExp] = useState('');
+
   const getBase64 = async (uri: string): Promise<string> => {
     if (Platform.OS === 'web') {
       const response = await fetch(uri);
@@ -56,9 +74,7 @@ export default function UploadScreen() {
         reader.readAsDataURL(blob);
       });
     } else {
-      return await FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64',
-      });
+      return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     }
   };
 
@@ -67,7 +83,6 @@ export default function UploadScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.5,
     });
-
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
       setQuestions([]);
@@ -77,20 +92,15 @@ export default function UploadScreen() {
 
   async function analyze() {
     if (!imageUri) return;
-
     setIsLoading(true);
     setErrorMessage(null);
-
     try {
-      // ★修正: さっき作った関数を使ってBase64に変換する
       const base64 = await getBase64(imageUri);
-
       const result = await analyzeImage(base64);
       const extracted = (result.questions as any[]).map((q) => ({
         ...q,
         checked: false,
       }));
-
       setQuestions(extracted);
     } catch (e: any) {
       setErrorMessage(`抽出に失敗しました: ${e.message}`);
@@ -105,14 +115,39 @@ export default function UploadScreen() {
     );
   }
 
+  function openEdit(index: number) {
+    const q = questions[index];
+    setEditMain(q.main_question);
+    setEditSub(q.sub_question);
+    setEditAnswer(q.answer);
+    setEditExp(q.explanation);
+    setEditingIndex(index);
+  }
+
+  function saveEdit() {
+    if (editingIndex === null) return;
+    setQuestions((prev) =>
+      prev.map((q, i) =>
+        i === editingIndex
+          ? {
+              ...q,
+              main_question: editMain,
+              sub_question: editSub,
+              answer: editAnswer,
+              explanation: editExp,
+            }
+          : q
+      )
+    );
+    setEditingIndex(null);
+  }
+
   async function saveQuestions() {
     const selected = questions.filter((q) => q.checked);
-
     if (selected.length === 0) {
-      Alert.alert('確認', '保存する問題が選択されていません');
+      showAlert('確認', '保存する問題が選択されていません');
       return;
     }
-
     const now = Date.now();
     const toSave: Question[] = selected.map((q) => ({
       questionId: q.question_id,
@@ -123,23 +158,21 @@ export default function UploadScreen() {
       createdAt: now,
       wrongCount: 1,
     }));
-
     try {
       insertMultiple(toSave);
-      Alert.alert('保存完了', `${toSave.length} 問を保存しました`);
+      showAlert('保存完了', `${toSave.length} 問を保存しました`);
       setQuestions([]);
       setImageUri(null);
     } catch (e: any) {
-      Alert.alert('エラー', `保存に失敗しました: ${e.message}`);
+      showAlert('エラー', `保存に失敗しました: ${e.message}`);
     }
   }
 
   function addManual() {
     if (!manualMain && !manualSub) {
-      Alert.alert('エラー', '大問または小問を入力してください');
+      showAlert('エラー', '大問または小問を入力してください');
       return;
     }
-
     const newQ: ExtractedQuestion = {
       question_id: `手動-${Date.now().toString().slice(-5)}`,
       main_question: manualMain,
@@ -148,7 +181,6 @@ export default function UploadScreen() {
       explanation: manualExp,
       checked: true,
     };
-
     setQuestions((prev) => [...prev, newQ]);
     setManualMain('');
     setManualSub('');
@@ -159,8 +191,6 @@ export default function UploadScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-
-      {/* ホームに戻るボタン */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
         <Text style={styles.backButtonText}>← ホームに戻る</Text>
       </TouchableOpacity>
@@ -209,18 +239,30 @@ export default function UploadScreen() {
           </View>
 
           {questions.map((q, index) => (
-            <TouchableOpacity
+            <View
               key={index}
               style={[styles.card, q.checked && styles.cardChecked]}
-              onPress={() => toggleCheck(index)}
             >
-              <Text style={styles.checkMark}>{q.checked ? '☑' : '☐'}</Text>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>問{q.question_id}</Text>
-                <Text style={styles.cardMain}>{q.main_question}</Text>
-                <Text style={styles.cardAnswer}>解答: {q.answer}</Text>
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cardTopRow}
+                onPress={() => toggleCheck(index)}
+              >
+                <Text style={styles.checkMark}>{q.checked ? '☑' : '☐'}</Text>
+                <Text style={styles.cardTitle}>{formatQuestionId(q.question_id)}</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.cardMain}>{q.main_question}</Text>
+              <Text style={styles.cardSub}>{q.sub_question}</Text>
+              <Text style={styles.cardAnswer}>解答: {q.answer}</Text>
+              <Text style={styles.cardExp}>解説: {q.explanation}</Text>
+
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => openEdit(index)}
+              >
+                <Text style={styles.editButtonText}>✏️ 編集</Text>
+              </TouchableOpacity>
+            </View>
           ))}
 
           <TouchableOpacity style={[styles.button, styles.buttonGreen]} onPress={saveQuestions}>
@@ -229,43 +271,40 @@ export default function UploadScreen() {
         </>
       )}
 
-      {/* 手動入力モーダル */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>手動で問題を追加</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="大問"
-              placeholderTextColor="#999"
-              value={manualMain}
-              onChangeText={setManualMain}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="小問"
-              placeholderTextColor="#999"
-              value={manualSub}
-              onChangeText={setManualSub}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="解答"
-              placeholderTextColor="#999"
-              value={manualAnswer}
-              onChangeText={setManualAnswer}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="解説"
-              placeholderTextColor="#999"
-              value={manualExp}
-              onChangeText={setManualExp}
-            />
+            <TextInput style={styles.input} placeholder="大問" placeholderTextColor="#999" value={manualMain} onChangeText={setManualMain} />
+            <TextInput style={styles.input} placeholder="小問" placeholderTextColor="#999" value={manualSub} onChangeText={setManualSub} />
+            <TextInput style={styles.input} placeholder="解答" placeholderTextColor="#999" value={manualAnswer} onChangeText={setManualAnswer} />
+            <TextInput style={styles.input} placeholder="解説" placeholderTextColor="#999" value={manualExp} onChangeText={setManualExp} />
             <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={addManual}>
               <Text style={styles.buttonText}>追加する</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setModalVisible(false)}>
+              <Text style={styles.buttonOutlineText}>キャンセル</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={editingIndex !== null} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>問題を編集</Text>
+            <Text style={styles.inputLabel}>大問</Text>
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="大問" placeholderTextColor="#999" value={editMain} onChangeText={setEditMain} multiline />
+            <Text style={styles.inputLabel}>小問</Text>
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="小問" placeholderTextColor="#999" value={editSub} onChangeText={setEditSub} multiline />
+            <Text style={styles.inputLabel}>解答</Text>
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="解答" placeholderTextColor="#999" value={editAnswer} onChangeText={setEditAnswer} multiline />
+            <Text style={styles.inputLabel}>解説</Text>
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="解説" placeholderTextColor="#999" value={editExp} onChangeText={setEditExp} multiline />
+            <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={saveEdit}>
+              <Text style={styles.buttonText}>保存する</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => setEditingIndex(null)}>
               <Text style={styles.buttonOutlineText}>キャンセル</Text>
             </TouchableOpacity>
           </View>
@@ -277,18 +316,9 @@ export default function UploadScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  content: {
-    padding: 16,
-    paddingTop: 60,      // 上の余白を追加
-    flexGrow: 1,         // コンテンツを下に広げる
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backButtonText: {
-    color: '#2196F3',
-    fontSize: 16,
-  },
+  content: { padding: 16, paddingTop: 60, flexGrow: 1 },
+  backButton: { marginBottom: 20 },
+  backButtonText: { color: '#2196F3', fontSize: 16 },
   image: { width: '100%', height: 300, borderRadius: 8, marginBottom: 16 },
   placeholder: {
     width: '100%', height: 200, borderRadius: 8, borderWidth: 1,
@@ -302,35 +332,47 @@ const styles = StyleSheet.create({
   buttonBlue: { backgroundColor: '#2196F3' },
   buttonGreen: { backgroundColor: '#4CAF50' },
   buttonDisabled: { opacity: 0.5 },
-  buttonOutline: {
-    backgroundColor: 'transparent', borderWidth: 1, borderColor: '#2196F3',
-  },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  buttonOutlineText: { color: '#2196F3', fontSize: 15, fontWeight: 'bold' },
+  buttonOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#2196F3' },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  buttonOutlineText: { color: '#2196F3', fontSize: 16, fontWeight: 'bold' },
   errorBox: { backgroundColor: '#FFEBEE', padding: 12, borderRadius: 8, marginBottom: 12 },
   errorText: { color: '#C62828' },
   successBox: { backgroundColor: '#E8F5E9', padding: 12, borderRadius: 8, marginBottom: 12 },
   successText: { color: '#2E7D32' },
   card: {
-    flexDirection: 'row', padding: 12, borderRadius: 10, borderWidth: 1,
-    borderColor: '#ddd', marginBottom: 10, alignItems: 'flex-start',
+    padding: 12, borderRadius: 10, borderWidth: 1,
+    borderColor: '#ddd', marginBottom: 10,
   },
   cardChecked: { borderColor: '#2196F3', backgroundColor: '#E3F2FD' },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   checkMark: { fontSize: 22, marginRight: 10 },
-  cardBody: { flex: 1 },
-  cardTitle: { fontWeight: 'bold', fontSize: 15, marginBottom: 4 },
-  cardMain: { fontSize: 13, color: '#444', marginBottom: 4 },
-  cardAnswer: { fontSize: 13, color: '#2E7D32' },
+  cardTitle: { fontWeight: 'bold', fontSize: 16 },
+  cardMain: { fontSize: 14, color: '#333', marginBottom: 4 },
+  cardSub: { fontSize: 13, color: '#555', fontStyle: 'italic', marginBottom: 4 },
+  cardAnswer: { fontSize: 13, color: '#2E7D32', marginBottom: 2 },
+  cardExp: { fontSize: 13, color: '#666', marginBottom: 8 },
+  editButton: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  editButtonText: { color: '#2196F3', fontSize: 13, fontWeight: 'bold' },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', padding: 24,
   },
   modalBox: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
+  inputLabel: { fontSize: 13, color: '#666', marginBottom: 4 },
   input: {
     borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
-    padding: 10, marginBottom: 12, fontSize: 14,
-    color: '#333',                // 入力文字を黒に
-    backgroundColor: '#fff',     // 背景を白に
+    padding: 10, marginBottom: 12,
+    fontSize: 16,
+    color: '#333', backgroundColor: '#fff',
   },
+  inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
 });
