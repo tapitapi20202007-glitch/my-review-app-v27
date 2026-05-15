@@ -52,7 +52,7 @@ export function getAllQuestions(): Question[] {
 export function getReviewQuestions(): Question[] {
   const now = new Date();
   const target = new Date(now);
-  target.setDate(target.getDate() - 7);
+  target.setDate(target.getDate() - 0);
   const start = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
   const end = start + 86399999;
 
