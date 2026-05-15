@@ -1,4 +1,7 @@
-﻿import * as ImagePicker from 'expo-image-picker';
+﻿import { Question } from '@/models/question';
+import { insertMultiple } from '@/services/db';
+import { analyzeImage } from '@/services/gemini';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -13,9 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Question } from '@/models/question';
-import { insertMultiple } from '@/services/db';
-import { analyzeImage } from '@/services/gemini';
 
 interface ExtractedQuestion {
   question_id: string;
@@ -73,7 +73,8 @@ export default function UploadScreen() {
         reader.readAsDataURL(blob);
       });
     } else {
-      return await (FileSystem as any).readAsStringAsync(uri, { encoding: 'base64' });
+      const FileSystem = require('expo-file-system');
+      return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     }
   };
 
@@ -238,17 +239,16 @@ export default function UploadScreen() {
           </View>
 
           {questions.map((q, index) => (
-            <View
+            <TouchableOpacity
               key={index}
               style={[styles.card, q.checked && styles.cardChecked]}
+              onPress={() => toggleCheck(index)}
+              activeOpacity={0.8}
             >
-              <TouchableOpacity
-                style={styles.cardTopRow}
-                onPress={() => toggleCheck(index)}
-              >
+              <View style={styles.cardTopRow}>
                 <Text style={styles.checkMark}>{q.checked ? '☑' : '☐'}</Text>
                 <Text style={styles.cardTitle}>{formatQuestionId(q.question_id)}</Text>
-              </TouchableOpacity>
+              </View>
 
               <Text style={styles.cardMain}>{q.main_question}</Text>
               <Text style={styles.cardSub}>{q.sub_question}</Text>
@@ -257,11 +257,14 @@ export default function UploadScreen() {
 
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={() => openEdit(index)}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  openEdit(index);
+                }}
               >
                 <Text style={styles.editButtonText}>✏️ 編集</Text>
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           ))}
 
           <TouchableOpacity style={[styles.button, styles.buttonGreen]} onPress={saveQuestions}>
@@ -375,4 +378,3 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
 });
-
