@@ -1,10 +1,9 @@
-import { getReviewQuestions, initDB, processUnreviewed } from '@/services/db';
+﻿import { getReviewQuestions, initDB, processUnreviewed } from '@/services/db';
 import { requestPermission, scheduleDaily } from '@/services/notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// --- あなたのこだわりのノート背景 ---
 function NotebookBackground() {
   const lines = Array.from({ length: 30 });
   return (
@@ -21,7 +20,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const [reviewCount, setReviewCount] = useState(0);
 
-  // 画面が表示されるたびに復習数を更新する
   useFocusEffect(
     useCallback(() => {
       setup();
@@ -30,11 +28,9 @@ export default function HomeScreen() {
 
   async function setup() {
     try {
-      // 1. DBの初期化（Web/Native両対応）
       initDB();
       processUnreviewed();
 
-      // 2. 通知の設定（Web版ではスキップしてエラーを防ぐ）
       if (Platform.OS !== 'web') {
         const granted = await requestPermission();
         if (!granted) {
@@ -43,7 +39,6 @@ export default function HomeScreen() {
         await scheduleDaily();
       }
 
-      // 3. 復習問題の数を読み込む
       loadReviewCount();
     } catch (e) {
       console.error('初期化エラー:', e);
@@ -57,7 +52,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 背景を復活 */}
       <NotebookBackground />
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -68,14 +62,14 @@ export default function HomeScreen() {
         <View style={styles.buttonsWrapper}>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => router.push('/upload')}
+            onPress={() => router.push('/(tabs)/upload')}
           >
             <Text style={styles.buttonText}>📷 テスト画像をアップロード</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.buttonGray]}
-            onPress={() => router.push('/problems')}
+            onPress={() => router.push('/(tabs)/problems')}
           >
             <Text style={styles.buttonText}>📋 登録済み問題を確認</Text>
           </TouchableOpacity>
@@ -100,7 +94,6 @@ export default function HomeScreen() {
   );
 }
 
-// --- もとのデザインスタイルをそのまま維持 ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,

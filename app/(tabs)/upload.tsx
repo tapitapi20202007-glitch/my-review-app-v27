@@ -1,5 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
+﻿import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -14,9 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Question } from '../../models/question';
-import { insertMultiple } from '../../services/db';
-import { analyzeImage } from '../../services/gemini';
+import { Question } from '@/models/question';
+import { insertMultiple } from '@/services/db';
+import { analyzeImage } from '@/services/gemini';
 
 interface ExtractedQuestion {
   question_id: string;
@@ -74,7 +73,7 @@ export default function UploadScreen() {
         reader.readAsDataURL(blob);
       });
     } else {
-      return await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+      return await (FileSystem as any).readAsStringAsync(uri, { encoding: 'base64' });
     }
   };
 
@@ -376,3 +375,4 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
 });
+
