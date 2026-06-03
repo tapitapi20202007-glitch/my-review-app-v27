@@ -277,10 +277,10 @@ export default function UploadScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>手動で問題を追加</Text>
-            <TextInput style={styles.input} placeholder="大問" placeholderTextColor="#999" value={manualMain} onChangeText={setManualMain} />
-            <TextInput style={styles.input} placeholder="小問" placeholderTextColor="#999" value={manualSub} onChangeText={setManualSub} />
-            <TextInput style={styles.input} placeholder="解答" placeholderTextColor="#999" value={manualAnswer} onChangeText={setManualAnswer} />
-            <TextInput style={styles.input} placeholder="解説" placeholderTextColor="#999" value={manualExp} onChangeText={setManualExp} />
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="大問" placeholderTextColor="#999" value={manualMain} onChangeText={setManualMain} multiline />
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="小問" placeholderTextColor="#999" value={manualSub} onChangeText={setManualSub} multiline />
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="解答" placeholderTextColor="#999" value={manualAnswer} onChangeText={setManualAnswer} multiline />
+            <TextInput style={[styles.input, styles.inputMultiline]} placeholder="解説" placeholderTextColor="#999" value={manualExp} onChangeText={setManualExp} multiline />
             <TouchableOpacity style={[styles.button, styles.buttonBlue]} onPress={addManual}>
               <Text style={styles.buttonText}>追加する</Text>
             </TouchableOpacity>
