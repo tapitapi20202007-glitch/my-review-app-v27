@@ -15,12 +15,12 @@ import {
 
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
-  return `${date.getMonth() + 1}月${date.getDate()}日にアップロード`;
+  return `${date.getMonth() + 1}gatsu${date.getDate()}nichi ni upload`;
 }
 
 function formatQuestionId(questionId: string): string {
-  if (questionId.startsWith('手動-')) return '手動保存';
-  return `問${questionId}`;
+  if (questionId.startsWith('shudo-')) return 'shudo hozon';
+  return `mondai${questionId}`;
 }
 
 export default function ProblemsScreen() {
@@ -46,17 +46,17 @@ export default function ProblemsScreen() {
 
   function handleDelete(id: string) {
     if (Platform.OS === 'web') {
-      const confirmed = window.confirm('この問題を削除しますか？');
+      const confirmed = window.confirm('kono mondai wo sakujo shimasuka?');
       if (confirmed) {
         deleteQuestion(id);
         setQuestions((prev) => prev.filter((q) => q.questionId !== id));
       }
     } else {
       const { Alert } = require('react-native');
-      Alert.alert('削除確認', 'この問題を削除しますか？', [
-        { text: 'キャンセル', style: 'cancel' },
+      Alert.alert('sakujo kakunin', 'kono mondai wo sakujo shimasuka?', [
+        { text: 'cancel', style: 'cancel' },
         {
-          text: '削除',
+          text: 'sakujo',
           style: 'destructive',
           onPress: () => {
             deleteQuestion(id);
@@ -94,7 +94,7 @@ export default function ProblemsScreen() {
   if (questions.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>登録済みの問題がありません</Text>
+        <Text style={styles.emptyText}>toroku zumi no mondai ga arimasen</Text>
       </View>
     );
   }
@@ -109,30 +109,26 @@ export default function ProblemsScreen() {
           const isExpanded = expandedId === item.questionId;
           return (
             <View style={styles.card}>
-              {/* ヘッダー行 */}
               <View style={styles.cardHeader}>
                 <Text style={styles.cardId}>{formatQuestionId(item.questionId)}</Text>
                 <View style={styles.headerRight}>
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.wrongCount}回目</Text>
+                    <Text style={styles.badgeText}>{item.wrongCount}kaime</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => handleDelete(item.questionId)}
                     style={styles.deleteButton}
                   >
-                    <Text style={styles.deleteText}>削除</Text>
+                    <Text style={styles.deleteText}>sakujo</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* アップロード日 */}
               <Text style={styles.uploadDate}>{formatDate(item.createdAt)}</Text>
 
-              {/* 問題文（常に表示） */}
               <Text style={styles.mainQuestion}>{item.mainQuestion}</Text>
               <Text style={styles.subQuestion}>{item.subQuestion}</Text>
 
-              {/* 詳細ボタン */}
               <TouchableOpacity
                 style={styles.detailButton}
                 onPress={() =>
@@ -140,20 +136,19 @@ export default function ProblemsScreen() {
                 }
               >
                 <Text style={styles.detailButtonText}>
-                  {isExpanded ? '▲ 閉じる' : '▼ 詳細を見る'}
+                  {isExpanded ? 'tojiru' : 'shosai wo miru'}
                 </Text>
               </TouchableOpacity>
 
-              {/* 詳細エリア */}
               {isExpanded && (
                 <View style={styles.detailArea}>
-                  <Text style={styles.answer}>解答: {item.answer}</Text>
-                  <Text style={styles.explanation}>解説: {item.explanation}</Text>
+                  <Text style={styles.answer}>kaito: {item.answer}</Text>
+                  <Text style={styles.explanation}>kaisetsu: {item.explanation}</Text>
                   <TouchableOpacity
                     style={styles.editButton}
                     onPress={() => openEdit(item)}
                   >
-                    <Text style={styles.editButtonText}>✏️ 編集</Text>
+                    <Text style={styles.editButtonText}>henshu</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -162,42 +157,41 @@ export default function ProblemsScreen() {
         }}
       />
 
-      {/* 編集モーダル */}
       <Modal visible={editingQuestion !== null} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>問題を編集</Text>
-            <Text style={styles.inputLabel}>大問</Text>
+            <Text style={styles.modalTitle}>mondai wo henshu</Text>
+            <Text style={styles.inputLabel}>daimon</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
-              placeholder="大問"
+              placeholder="daimon"
               placeholderTextColor="#999"
               value={editMain}
               onChangeText={setEditMain}
               multiline
             />
-            <Text style={styles.inputLabel}>小問</Text>
+            <Text style={styles.inputLabel}>shomon</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
-              placeholder="小問"
+              placeholder="shomon"
               placeholderTextColor="#999"
               value={editSub}
               onChangeText={setEditSub}
               multiline
             />
-            <Text style={styles.inputLabel}>解答</Text>
+            <Text style={styles.inputLabel}>kaito</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
-              placeholder="解答"
+              placeholder="kaito"
               placeholderTextColor="#999"
               value={editAnswer}
               onChangeText={setEditAnswer}
               multiline
             />
-            <Text style={styles.inputLabel}>解説</Text>
+            <Text style={styles.inputLabel}>kaisetsu</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
-              placeholder="解説"
+              placeholder="kaisetsu"
               placeholderTextColor="#999"
               value={editExp}
               onChangeText={setEditExp}
@@ -207,13 +201,13 @@ export default function ProblemsScreen() {
               style={[styles.modalButton, styles.buttonBlue]}
               onPress={saveEdit}
             >
-              <Text style={styles.modalButtonText}>保存する</Text>
+              <Text style={styles.modalButtonText}>hozon suru</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modalButton, styles.buttonOutline]}
               onPress={() => setEditingQuestion(null)}
             >
-              <Text style={styles.modalButtonOutlineText}>キャンセル</Text>
+              <Text style={styles.modalButtonOutlineText}>cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
